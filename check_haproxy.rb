@@ -10,6 +10,10 @@ OptionParser.new do |opts|
   opts.banner = "Usage: #{__FILE__} [options]"
 
   opts.on "-u", "--url URL", String, "URL for haproxy csv stats" do |url|
+    unless url.match /;csv$/
+      url += ";csv"
+    end
+
     options[:url] = url
   end
 
@@ -45,14 +49,28 @@ response = http.request(request)
 if Net::HTTPOK === response
   csv = response.body
 
-  if csv[0] == '#'
+  if csv[0].chr == '#'
     csv = csv[2..-1]
 
     targets = {}
-    CSV.parse(csv, headers: :first_row) do |row|
+    data = csv.split("\n")
+    headers = data.shift.split(",").map {|h| h.strip }
+
+    parse = proc do |raw|
+      row = {}
+      raw.each_with_index do |value, index|
+        row[headers[index]] = value
+      end
+
+      row
+    end
+
+    CSV.parse(data.join("\n")) do |row|
+      row = parse.call(row)
+
       case row['svname']
       when 'FRONTEND'
-        targets[row['pxname']] = {frontend: row, proxies: []}
+        targets[row['pxname']] = {:frontend => row, :proxies => []}
       when 'BACKEND'
         targets[row['pxname']][:backend] = row
       else
@@ -64,7 +82,7 @@ if Net::HTTPOK === response
     targets.each do |proxy_name, data|
       front, back, proxies = data.values_at :frontend, :backend, :proxies
 
-      stat = {name: proxy_name, up: 0, down: 0, unknown: 0, total: 0}
+      stat = {:name => proxy_name, :up => 0, :down => 0, :unknown => 0, :total => 0}
 
       proxies.each do |proxy|
         case proxy['status']
@@ -106,7 +124,7 @@ if Net::HTTPOK === response
       exit 0
     end
   else
-    STDERR.puts "Malformed response: headers not found"
+    STDERR.puts "Malformed response: headers not found in #{csv[0..10]}"
     exit 2
   end
 else
