@@ -11,6 +11,12 @@ only have one, so that's no tested.
 
 It's *also* Ruby 1.8+ (because nagios servers are never up to date).
 
+# Requirements
+
+* Ruby 1.8+
+
+Yes, that's it. On purpose I use no gems, or no Ruby 1.9 features.
+
 # Usage
 
 ```
