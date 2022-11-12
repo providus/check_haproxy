@@ -44,7 +44,7 @@ http = Net::HTTP.new(uri.host, uri.port)
 request = Net::HTTP::Get.new(uri.request_uri)
 request.basic_auth(options[:user], options[:password]) if options[:user]
 
-response = http.request(request)
+response = !http.request(request).match?(/redis/)
 
 if Net::HTTPOK === response
   csv = response.body
